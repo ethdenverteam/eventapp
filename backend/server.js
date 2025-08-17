@@ -3,10 +3,30 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const { Pool } = require('pg');
 require('dotenv').config();
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Database connection failed:', err);
+  } else {
+    console.log('✅ Database connected successfully');
+  }
+});
 
 // Middleware
 app.use(cors({
@@ -16,34 +36,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// In-memory storage (для демо, в продакшене используйте базу данных)
-let users = [
-  {
-    id: 1,
-    name: 'Demo User',
-    email: 'demo@example.com',
-    password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
-    createdAt: new Date()
-  }
-];
-
-let events = [
-  {
-    id: 1,
-    title: 'Tech Conference 2024',
-    description: 'Annual technology conference',
-    date: '2024-12-15',
-    time: '10:00',
-    location: 'Tech Center',
-    maxParticipants: 100,
-    price: 0,
-    category: 'Technology',
-    format: 'offline',
-    createdBy: 1,
-    createdAt: new Date()
-  }
-];
-
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -51,23 +43,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// Authentication middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid token' });
-    }
-    req.user = user;
-    next();
-  });
-};
 
 // Routes
 
@@ -76,192 +52,151 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'EventApp API is running' });
 });
 
-// User registration
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    // Check if user already exists
-    if (users.find(u => u.email === email)) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const newUser = {
-      id: users.length + 1,
-      name,
-      email,
-      password: hashedPassword,
-      createdAt: new Date()
-    };
-
-    users.push(newUser);
-
-    // Generate token
-    const token = jwt.sign({ userId: newUser.id, email: newUser.email }, JWT_SECRET);
-
-    res.status(201).json({
-      message: 'User created successfully',
-      user: { id: newUser.id, name: newUser.name, email: newUser.email },
-      token
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// User login
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Find user
-    const user = users.find(u => u.email === email);
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    // Check password
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET);
-
-    res.json({
-      message: 'Login successful',
-      user: { id: user.id, name: user.name, email: user.email },
-      token
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 // Get user profile
-app.get('/api/user/profile', authenticateToken, (req, res) => {
-  const user = users.find(u => u.id === req.user.userId);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  res.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    createdAt: user.createdAt
-  });
-});
-
-// Update user profile
-app.put('/api/user/profile', authenticateToken, (req, res) => {
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
   try {
-    const { name, email } = req.body;
-    const userIndex = users.findIndex(u => u.id === req.user.userId);
+    const userResult = await pool.query(
+      'SELECT id, name, email, created_at FROM users WHERE id = $1',
+      [req.user.userId]
+    );
 
-    if (userIndex === -1) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    users[userIndex] = { ...users[userIndex], name, email };
+    res.json(userResult.rows[0]);
+  } catch (error) {
+    console.error('Profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update user profile
+app.put('/api/user/profile', authenticateToken, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    
+    const updatedUser = await pool.query(
+      'UPDATE users SET name = $1, email = $2, updated_at = NOW() WHERE id = $3 RETURNING id, name, email',
+      [name, email, req.user.userId]
+    );
+
+    if (updatedUser.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     res.json({
       message: 'Profile updated successfully',
-      user: {
-        id: users[userIndex].id,
-        name: users[userIndex].name,
-        email: users[userIndex].email
-      }
+      user: updatedUser.rows[0]
     });
   } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Get all events
-app.get('/api/events', (req, res) => {
-  res.json(events);
+app.get('/api/events', async (req, res) => {
+  try {
+    const eventsResult = await pool.query(
+      'SELECT e.*, u.name as creator_name FROM events e LEFT JOIN users u ON e.created_by = u.id ORDER BY e.created_at DESC'
+    );
+    res.json(eventsResult.rows);
+  } catch (error) {
+    console.error('Get events error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Get event by ID
-app.get('/api/events/:id', (req, res) => {
-  const event = events.find(e => e.id === parseInt(req.params.id));
-  if (!event) {
-    return res.status(404).json({ error: 'Event not found' });
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    const eventResult = await pool.query(
+      'SELECT e.*, u.name as creator_name FROM events e LEFT JOIN users u ON e.created_by = u.id WHERE e.id = $1',
+      [req.params.id]
+    );
+
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    res.json(eventResult.rows[0]);
+  } catch (error) {
+    console.error('Get event error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  res.json(event);
 });
 
 // Create new event
-app.post('/api/events', authenticateToken, (req, res) => {
+app.post('/api/events', authenticateToken, async (req, res) => {
   try {
-    const { title, description, date, time, location, maxParticipants, price, category, format } = req.body;
+    const { title, description, date, time, location, max_participants, price, category, format } = req.body;
 
-    const newEvent = {
-      id: events.length + 1,
-      title,
-      description,
-      date,
-      time,
-      location,
-      maxParticipants: parseInt(maxParticipants),
-      price: parseFloat(price),
-      category,
-      format,
-      createdBy: req.user.userId,
-      createdAt: new Date()
-    };
+    const newEvent = await pool.query(
+      `INSERT INTO events (
+        title, description, date, time, location, max_participants, 
+        price, category, format, created_by, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) 
+      RETURNING *`,
+      [title, description, date, time, location, max_participants, price, category, format, req.user.userId]
+    );
 
-    events.push(newEvent);
-    res.status(201).json({ message: 'Event created successfully', event: newEvent });
+    res.status(201).json({ 
+      message: 'Event created successfully', 
+      event: newEvent.rows[0] 
+    });
   } catch (error) {
+    console.error('Create event error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Update event
-app.put('/api/events/:id', authenticateToken, (req, res) => {
+app.put('/api/events/:id', authenticateToken, async (req, res) => {
   try {
-    const eventIndex = events.findIndex(e => e.id === parseInt(req.params.id));
-    if (eventIndex === -1) {
-      return res.status(404).json({ error: 'Event not found' });
+    const { title, description, date, time, location, max_participants, price, category, format } = req.body;
+
+    const updatedEvent = await pool.query(
+      `UPDATE events SET 
+        title = $1, description = $2, date = $3, time = $4, 
+        location = $5, max_participants = $6, price = $7, 
+        category = $8, format = $9, updated_at = NOW()
+      WHERE id = $10 AND created_by = $11 RETURNING *`,
+      [title, description, date, time, location, max_participants, price, category, format, req.params.id, req.user.userId]
+    );
+
+    if (updatedEvent.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found or not authorized' });
     }
 
-    // Check if user owns the event
-    if (events[eventIndex].createdBy !== req.user.userId) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const updatedEvent = { ...events[eventIndex], ...req.body };
-    events[eventIndex] = updatedEvent;
-
-    res.json({ message: 'Event updated successfully', event: updatedEvent });
+    res.json({ 
+      message: 'Event updated successfully', 
+      event: updatedEvent.rows[0] 
+    });
   } catch (error) {
+    console.error('Update event error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Delete event
-app.delete('/api/events/:id', authenticateToken, (req, res) => {
+app.delete('/api/events/:id', authenticateToken, async (req, res) => {
   try {
-    const eventIndex = events.findIndex(e => e.id === parseInt(req.params.id));
-    if (eventIndex === -1) {
-      return res.status(404).json({ error: 'Event not found' });
+    const deletedEvent = await pool.query(
+      'DELETE FROM events WHERE id = $1 AND created_by = $2 RETURNING id',
+      [req.params.id, req.user.userId]
+    );
+
+    if (deletedEvent.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found or not authorized' });
     }
 
-    // Check if user owns the event
-    if (events[eventIndex].createdBy !== req.user.userId) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    events.splice(eventIndex, 1);
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
+    console.error('Delete event error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
