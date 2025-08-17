@@ -152,7 +152,7 @@ CREATE TABLE file_uploads (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- User followers table
+-- User followers table (подписки на пользователей)
 CREATE TABLE user_followers (
     id SERIAL PRIMARY KEY,
     follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -161,7 +161,7 @@ CREATE TABLE user_followers (
     UNIQUE(follower_id, following_id)
 );
 
--- User favorites table
+-- User favorites table (избранные события)
 CREATE TABLE user_favorites (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -187,27 +187,27 @@ CREATE TABLE telegram_sessions (
 
 -- Insert default categories
 INSERT INTO event_categories (name, description, icon, color) VALUES
-('Technology', 'Technology and innovation events', 'laptop', '#3B82F6'),
-('Business', 'Business and entrepreneurship events', 'briefcase', '#10B981'),
-('Design', 'Design and creativity events', 'palette', '#F59E0B'),
-('Art', 'Art and culture events', 'brush', '#EF4444'),
-('Education', 'Educational and learning events', 'graduation-cap', '#8B5CF6'),
-('Sports', 'Sports and fitness events', 'trophy', '#06B6D4'),
-('Music', 'Music and entertainment events', 'music', '#EC4899'),
-('Food', 'Food and culinary events', 'utensils', '#F97316');
+('Технологии', 'Технологические и инновационные события', 'laptop', '#3B82F6'),
+('Бизнес', 'Бизнес и предпринимательство', 'briefcase', '#10B981'),
+('Дизайн', 'Дизайн и креативность', 'palette', '#F59E0B'),
+('Искусство', 'Искусство и культура', 'brush', '#EF4444'),
+('Образование', 'Образовательные события', 'graduation-cap', '#8B5CF6'),
+('Спорт', 'Спорт и фитнес', 'trophy', '#06B6D4'),
+('Музыка', 'Музыка и развлечения', 'music', '#EC4899'),
+('Еда', 'Кулинарные события', 'utensils', '#F97316');
 
 -- Insert default tags
 INSERT INTO event_tags (name) VALUES
-('Workshop'),
-('Conference'),
-('Meetup'),
-('Webinar'),
-('Hackathon'),
-('Networking'),
-('Training'),
-('Exhibition'),
-('Concert'),
-('Festival');
+('Воркшоп'),
+('Конференция'),
+('Встреча'),
+('Вебинар'),
+('Хакатон'),
+('Нетворкинг'),
+('Тренинг'),
+('Выставка'),
+('Концерт'),
+('Фестиваль');
 
 -- Create indexes for better performance
 CREATE INDEX idx_events_date ON events(date);
@@ -246,8 +246,160 @@ CREATE TRIGGER update_telegram_sessions_updated_at BEFORE UPDATE ON telegram_ses
 
 -- Insert demo user (password: demo123)
 INSERT INTO users (name, email, password_hash, is_verified, email_verified) VALUES
-('Demo User', 'demo@example.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', TRUE, TRUE);
+('Демо Пользователь', 'demo@example.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', TRUE, TRUE);
 
 -- Insert demo event
 INSERT INTO events (title, description, date, time, location, max_participants, category, created_by) VALUES
-('Tech Conference 2024', 'Annual technology conference featuring the latest innovations and industry leaders', '2024-12-15', '10:00:00', 'Tech Center, Main Hall', 100, 'Technology', 1);
+('Технологическая конференция 2024', 'Ежегодная технологическая конференция с последними инновациями и лидерами отрасли', '2024-12-15', '10:00:00', 'Тех Центр, Главный зал', 100, 'Технологии', 1);
+
+-- ========================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ========================================
+
+-- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_followers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE telegram_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Users table policies
+CREATE POLICY "Users can view their own profile" ON users
+    FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" ON users
+    FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Allow registration" ON users
+    FOR INSERT WITH CHECK (true);
+
+-- Events table policies
+CREATE POLICY "Anyone can view published events" ON events
+    FOR SELECT USING (status = 'published');
+
+CREATE POLICY "Users can view their own events" ON events
+    FOR SELECT USING (auth.uid() = created_by);
+
+CREATE POLICY "Users can create events" ON events
+    FOR INSERT WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Users can update their own events" ON events
+    FOR UPDATE USING (auth.uid() = created_by);
+
+CREATE POLICY "Users can delete their own events" ON events
+    FOR DELETE USING (auth.uid() = created_by);
+
+-- Tickets table policies
+CREATE POLICY "Users can view their own tickets" ON tickets
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create tickets" ON tickets
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own tickets" ON tickets
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- User sessions table policies
+CREATE POLICY "Users can view their own sessions" ON user_sessions
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create sessions" ON user_sessions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own sessions" ON user_sessions
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Event registrations table policies
+CREATE POLICY "Users can view their own registrations" ON event_registrations
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create registrations" ON event_registrations
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own registrations" ON event_registrations
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Event feedback table policies
+CREATE POLICY "Anyone can view feedback for published events" ON event_feedback
+    FOR SELECT USING (EXISTS (
+        SELECT 1 FROM events WHERE id = event_feedback.event_id AND status = 'published'
+    ));
+
+CREATE POLICY "Users can view their own feedback" ON event_feedback
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create feedback" ON event_feedback
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own feedback" ON event_feedback
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- File uploads table policies
+CREATE POLICY "Users can view their own uploads" ON file_uploads
+    FOR SELECT USING (auth.uid() = uploaded_by);
+
+CREATE POLICY "Users can create uploads" ON file_uploads
+    FOR INSERT WITH CHECK (auth.uid() = uploaded_by);
+
+CREATE POLICY "Users can delete their own uploads" ON file_uploads
+    FOR DELETE USING (auth.uid() = uploaded_by);
+
+-- User followers table policies
+CREATE POLICY "Users can view their own followers" ON user_followers
+    FOR SELECT USING (auth.uid() = following_id);
+
+CREATE POLICY "Users can view who they follow" ON user_followers
+    FOR SELECT USING (auth.uid() = follower_id);
+
+CREATE POLICY "Users can follow others" ON user_followers
+    FOR INSERT WITH CHECK (auth.uid() = follower_id);
+
+CREATE POLICY "Users can unfollow others" ON user_followers
+    FOR DELETE USING (auth.uid() = follower_id);
+
+-- User favorites table policies
+CREATE POLICY "Users can view their own favorites" ON user_favorites
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can add favorites" ON user_favorites
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can remove favorites" ON user_favorites
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Telegram sessions table policies
+CREATE POLICY "Users can view their own telegram sessions" ON telegram_sessions
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow telegram bot access" ON telegram_sessions
+    FOR ALL USING (true);
+
+-- Public read access for categories and tags
+ALTER TABLE event_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_tags ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view categories" ON event_categories
+    FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can view tags" ON event_tags
+    FOR SELECT USING (true);
+
+-- Admin policies (for future use)
+CREATE POLICY "Admins can view all data" ON users
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true
+        )
+    );
+
+CREATE POLICY "Admins can view all events" ON events
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users WHERE id = auth.uid() AND is_admin = true
+        )
+    );

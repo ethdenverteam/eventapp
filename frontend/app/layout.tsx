@@ -9,9 +9,9 @@ import { TelegramProvider } from '@/components/telegram-provider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'EventApp - Event Management',
-  description: 'Create, organize and manage events with ease',
-  keywords: 'events, tickets, organization, management',
+  title: 'EventApp - Управление мероприятиями',
+  description: 'Создавайте, организуйте и управляйте мероприятиями с легкостью',
+  keywords: 'мероприятия, события, билеты, организация',
 }
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning>
       <body className={inter.className}>
         <QueryProvider>
           <ThemeProvider>
