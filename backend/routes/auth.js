@@ -37,7 +37,7 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const newUser = await pool.query(
-      'INSERT INTO users (name, email, password_hash, created_at) VALUES ($1, $2, $3, NOW()) RETURNING id, name, email, created_at',
+      'INSERT INTO users (name, email, password_hash, uuid, email_verified, created_at) VALUES ($1, $2, $3, uuid_generate_v4(), true, NOW()) RETURNING id, name, email, uuid, created_at',
       [name, email, hashedPassword]
     );
 
@@ -48,12 +48,17 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       message: 'User created successfully',
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, uuid: user.uuid },
       token
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message,
+      code: error.code || 'UNKNOWN',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -85,12 +90,17 @@ router.post('/login', async (req, res) => {
 
     res.json({
       message: 'Login successful',
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, uuid: user.uuid },
       token
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message,
+      code: error.code || 'UNKNOWN',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
