@@ -11,48 +11,63 @@ import {
   MapPin, 
   Clock, 
   Plus, 
-  TrendingUp,
+  Heart,
   Settings,
   Bell,
-  Star
+  Star,
+  UserPlus,
+  Bookmark
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 // Моковые данные для демонстрации
 const mockStats = {
-  totalEvents: 12,
+  totalVisitedEvents: 8,
+  totalCreatedEvents: 5,
   upcomingEvents: 3,
-  totalParticipants: 156,
-  totalRevenue: 45000
+  followers: 24
 }
 
 const mockUpcomingEvents = [
   {
     id: '1',
-    title: 'Конференция по веб-разработке',
+    title: 'Web Development Conference',
     date: '2024-02-15',
     time: '10:00',
-    location: 'Москва, ул. Тверская, 1',
+    location: 'Moscow, Tverskaya St., 1',
     participants: 45,
-    maxParticipants: 100
+    maxParticipants: 100,
+    type: 'my-registration'
   },
   {
     id: '2',
-    title: 'Встреча стартаперов',
+    title: 'Startup Meetup',
     date: '2024-02-20',
     time: '19:00',
-    location: 'Онлайн (Zoom)',
+    location: 'Online (Zoom)',
     participants: 23,
-    maxParticipants: 50
+    maxParticipants: 50,
+    type: 'my-created'
   },
   {
     id: '3',
-    title: 'Мастер-класс по дизайну',
+    title: 'Design Workshop',
     date: '2024-02-25',
     time: '14:00',
-    location: 'Санкт-Петербург, Невский пр., 28',
+    location: 'St. Petersburg, Nevsky Ave., 28',
     participants: 18,
-    maxParticipants: 30
+    maxParticipants: 30,
+    type: 'favorite-topic'
+  },
+  {
+    id: '4',
+    title: 'Tech Innovation Summit',
+    date: '2024-03-01',
+    time: '09:00',
+    location: 'Online (Teams)',
+    participants: 67,
+    maxParticipants: 200,
+    type: 'following-user'
   }
 ]
 
@@ -72,7 +87,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Загрузка...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     )
@@ -82,12 +97,42 @@ export default function DashboardPage() {
     return null
   }
 
+  const getEventTypeIcon = (type) => {
+    switch (type) {
+      case 'my-registration':
+        return <Bookmark className="w-4 h-4 text-blue-500" />
+      case 'my-created':
+        return <Plus className="w-4 h-4 text-green-500" />
+      case 'favorite-topic':
+        return <Heart className="w-4 h-4 text-red-500" />
+      case 'following-user':
+        return <UserPlus className="w-4 h-4 text-purple-500" />
+      default:
+        return <Calendar className="w-4 h-4 text-gray-500" />
+    }
+  }
+
+  const getEventTypeLabel = (type) => {
+    switch (type) {
+      case 'my-registration':
+        return 'My Registration'
+      case 'my-created':
+        return 'Created by Me'
+      case 'favorite-topic':
+        return 'Favorite Topic'
+      case 'following-user':
+        return 'Following User'
+      default:
+        return 'Event'
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Приветствие */}
+        {/* Welcome */}
         <motion.div 
           className="mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -95,14 +140,14 @@ export default function DashboardPage() {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Добро пожаловать, {user.name}! 👋
+            Welcome, {user.name}! 👋
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Управляйте вашими мероприятиями и отслеживайте статистику
+            Manage your events and track your statistics
           </p>
         </motion.div>
 
-        {/* Статистика */}
+        {/* Statistics */}
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -112,8 +157,8 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Всего событий</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.totalEvents}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Visited Events</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.totalVisitedEvents}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -124,11 +169,11 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Предстоящие</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.upcomingEvents}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Created Events</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.totalCreatedEvents}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <Plus className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </div>
@@ -136,11 +181,11 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Участники</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.totalParticipants}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Upcoming Events</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.upcomingEvents}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </div>
@@ -148,17 +193,17 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Доход</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">₽{mockStats.totalRevenue.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Followers</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockStats.followers}</p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/30 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-pink-600 dark:text-pink-400" />
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Быстрые действия */}
+        {/* Quick Actions */}
         <motion.div 
           className="mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -166,29 +211,32 @@ export default function DashboardPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Быстрые действия</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
             <div className="flex flex-wrap gap-4">
-              <Button className="flex items-center space-x-2">
+              <Button 
+                className="flex items-center space-x-2"
+                onClick={() => router.push('/create')}
+              >
                 <Plus className="w-4 h-4" />
-                <span>Создать событие</span>
+                <span>Create Event</span>
               </Button>
               <Button variant="outline" className="flex items-center space-x-2">
                 <Users className="w-4 h-4" />
-                <span>Управление участниками</span>
+                <span>Manage Participants</span>
               </Button>
               <Button variant="outline" className="flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4" />
-                <span>Аналитика</span>
+                <Heart className="w-4 h-4" />
+                <span>My Favorites</span>
               </Button>
               <Button variant="outline" className="flex items-center space-x-2">
                 <Settings className="w-4 h-4" />
-                <span>Настройки</span>
+                <span>Settings</span>
               </Button>
             </div>
           </div>
         </motion.div>
 
-        {/* Предстоящие события */}
+        {/* Upcoming Events */}
         <motion.div 
           className="mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -197,8 +245,10 @@ export default function DashboardPage() {
         >
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Предстоящие события</h2>
-              <Button variant="outline" size="sm">Посмотреть все</Button>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Events</h2>
+              <Button variant="outline" size="sm" onClick={() => router.push('/events')}>
+                View All
+              </Button>
             </div>
             
             <div className="space-y-4">
@@ -211,11 +261,17 @@ export default function DashboardPage() {
                   transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
                   <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-1">{event.title}</h3>
+                    <div className="flex items-center space-x-2 mb-1">
+                      {getEventTypeIcon(event.type)}
+                      <h3 className="font-medium text-gray-900 dark:text-white">{event.title}</h3>
+                      <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded-full text-gray-600 dark:text-gray-400">
+                        {getEventTypeLabel(event.type)}
+                      </span>
+                    </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
                       <span className="flex items-center space-x-1">
                         <Calendar className="w-4 h-4" />
-                        <span>{new Date(event.date).toLocaleDateString('ru-RU')}</span>
+                        <span>{new Date(event.date).toLocaleDateString('en-US')}</span>
                       </span>
                       <span className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
@@ -230,7 +286,7 @@ export default function DashboardPage() {
                   
                   <div className="text-right">
                     <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      {event.participants}/{event.maxParticipants} участников
+                      {event.participants}/{event.maxParticipants} participants
                     </div>
                     <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                       <div 
@@ -241,34 +297,6 @@ export default function DashboardPage() {
                   </div>
                 </motion.div>
               ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Последние активности */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Последние активности</h2>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-gray-600 dark:text-gray-400">Новая регистрация на "Конференция по веб-разработке"</span>
-                <span className="text-gray-400">2 минуты назад</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-gray-600 dark:text-gray-400">Событие "Встреча стартаперов" обновлено</span>
-                <span className="text-gray-400">1 час назад</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span className="text-gray-600 dark:text-gray-400">Новый отзыв о мероприятии "Мастер-класс по дизайну"</span>
-                <span className="text-gray-400">3 часа назад</span>
-              </div>
             </div>
           </div>
         </motion.div>
