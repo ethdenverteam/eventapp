@@ -4,13 +4,14 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryProvider } from '@/components/query-provider'
 import { AuthProvider } from '@/components/auth-provider'
+import { TelegramProvider } from '@/components/telegram-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'EventApp - Управление мероприятиями',
-  description: 'Создавайте, организуйте и управляйте мероприятиями с легкостью',
-  keywords: 'мероприятия, события, билеты, организация',
+  title: 'EventApp - Event Management',
+  description: 'Create, organize and manage events with ease',
+  keywords: 'events, tickets, organization, management',
 }
 
 export default function RootLayout({
@@ -19,13 +20,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <QueryProvider>
           <ThemeProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            <TelegramProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </TelegramProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>
